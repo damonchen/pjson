@@ -1,5 +1,10 @@
 package pjson
 
+type Pair struct {
+	Key   string
+	Value interface{}
+}
+
 // Object 实现Object的基本类型
 type Object map[string]interface{}
 

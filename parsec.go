@@ -11,14 +11,13 @@ import (
 var Skip = p.Skip(p.Space)
 
 // Comma 逗号分隔符
-var Comma = p.Skip(p.Str(","))
+var Comma = p.Str(",")
 
 // Colon 冒号分隔符
-var Colon = p.Skip(p.Str(":"))
+var Colon = p.Str(":")
 
 func listBodyParser(st p.State) (interface{}, error) {
-	value, err := p.SepBy1(ValueParser(), Comma)(st)
-	fmt.Printf("type :%v, value :%v, err :%v\n", reflect.TypeOf(value), value, err)
+	value, err := p.SepBy(ValueParser(), Skip.Then(Comma).Then(Skip))(st)
 	return value, err
 }
 
@@ -29,8 +28,10 @@ func ListParser() p.P {
 		right := Skip.Then(p.Chr(']'))
 		empty := p.Between(left, right, Skip)
 
-		list, err := p.Between(left, right, p.Many(p.Choice(p.NChr(']'), listBodyParser)))(st)
+		//		list, err := p.Between(left, right, p.UnionAll(listBodyParser))(st)
+		list, err := p.Between(left, right, listBodyParser)(st)
 		fmt.Printf("list type :%v, value :%v, err: %v\n", reflect.TypeOf(list), list, err)
+
 		if err != nil {
 			_, e := empty(st)
 			if e != nil {
@@ -50,8 +51,62 @@ func ListParser() p.P {
 	}
 }
 
+// key只能是string，value可以为任意值，中间以冒号分隔
+func objectKeyValueParser() p.P {
+	return func(st p.State) (interface{}, error) {
+		pair := Pair{}
+		s, err := Skip.Then(StringParser)(st)
+		fmt.Printf("string %v, err %s\n", s, err)
+		if err != nil {
+			return nil, err
+		}
+
+		if str, ok := s.(string); ok {
+			pair.Key = str
+		} else {
+			return nil, fmt.Errorf("%v is not a string", s)
+		}
+
+		_, err = Skip.Then(Colon).Then(Skip)(st)
+		fmt.Printf("skip colon %v, err %s\n", s, err)
+		if err != nil {
+			return nil, err
+		}
+
+		fmt.Printf("st pos %v\n", st.Pos())
+
+		v, err := ValueParser()(st)
+		//		v, err := StringParser(st)
+		fmt.Printf("value %v, err %s\n", v, err)
+		if err != nil {
+			return nil, err
+		}
+
+		pair.Value = v
+
+		return pair, nil
+	}
+}
+
+// key,value通过逗号进行分隔，类似list处理
 func objectBodyParser(st p.State) (interface{}, error) {
-	return p.SepBy1(ValueParser(), p.Choice(Colon))(st)
+	value, err := p.SepBy(objectKeyValueParser(), Skip.Then(Comma).Then(Skip))(st)
+	if err != nil {
+		return nil, err
+	}
+
+	fmt.Printf("object value %v", value)
+
+	o := Object{}
+	if vlist, ok := value.([]interface{}); ok {
+		for _, p := range vlist {
+			if pair, ok := p.(Pair); ok {
+				o[pair.Key] = pair.Value
+			}
+		}
+	}
+
+	return o, nil
 }
 
 // ObjectParser 实现数组解析器
@@ -61,7 +116,7 @@ func ObjectParser() p.P {
 		right := Skip.Then(p.Chr('}'))
 		empty := p.Between(left, right, Skip)
 
-		object, err := p.Between(left, right, p.Many(p.Choice(objectBodyParser, p.NChr('}'))))(st)
+		object, err := p.Between(left, right, objectBodyParser)(st)
 		if err != nil {
 			_, e := empty(st)
 			if e != nil {
