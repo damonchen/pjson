@@ -30,7 +30,6 @@ func ListParser() p.P {
 
 		//		list, err := p.Between(left, right, p.UnionAll(listBodyParser))(st)
 		list, err := p.Between(left, right, listBodyParser)(st)
-		fmt.Printf("list type :%v, value :%v, err: %v\n", reflect.TypeOf(list), list, err)
 
 		if err != nil {
 			_, e := empty(st)
@@ -56,7 +55,6 @@ func objectKeyValueParser() p.P {
 	return func(st p.State) (interface{}, error) {
 		pair := Pair{}
 		s, err := Skip.Then(StringParser)(st)
-		fmt.Printf("string %v, err %s\n", s, err)
 		if err != nil {
 			return nil, err
 		}
@@ -68,16 +66,11 @@ func objectKeyValueParser() p.P {
 		}
 
 		_, err = Skip.Then(Colon).Then(Skip)(st)
-		fmt.Printf("skip colon %v, err %s\n", s, err)
 		if err != nil {
 			return nil, err
 		}
 
-		fmt.Printf("st pos %v\n", st.Pos())
-
 		v, err := ValueParser()(st)
-		//		v, err := StringParser(st)
-		fmt.Printf("value %v, err %s\n", v, err)
 		if err != nil {
 			return nil, err
 		}
@@ -94,8 +87,6 @@ func objectBodyParser(st p.State) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	fmt.Printf("object value %v", value)
 
 	o := Object{}
 	if vlist, ok := value.([]interface{}); ok {
