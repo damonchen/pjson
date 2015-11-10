@@ -12,7 +12,7 @@ type Float float64
 // FloatParser 解析浮点数
 func FloatParser(st p.State) (interface{}, error) {
 	return p.Do(func(st p.State) interface{} {
-		f := p.Try(p.Float).Exec(st)
+		f := p.Choice(p.Try(p.Float), p.Try(p.Int)).Exec(st)
 		val, err := strconv.ParseFloat(f.(string), 64)
 		if err == nil {
 			return Float(val)
